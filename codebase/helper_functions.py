@@ -2,23 +2,47 @@
 Fucntions to be applied for processing datasets for drought index development
 '''
 
+from statsmodels.distributions.empirical_distribution import ECDF
+from copulae import GaussianCopula, ClaytonCopula, FrankCopula, GumbelCopula, StudentCopula
+
 # Standardised Anomaly
+
+'''To remove climatology, calculate the monthly climatology (long-term mean and
+standard deviation for each month) and then compute standardized anomalies for 
+each variable (tws, precip, et) per subregion.'''
 
 # Function to calculate standardized anomalies
 def calc_standardized_anomalies(data, var_name):
-    '''To remove climatology, calculate the monthly climatology (long-term mean and standard deviation for each month) and then compute standardized anomalies for each variable (tws, precip, et) per subregion.'''
     # Group by month and calculate climatological mean and std
-    monthly_clim = data[var_name].groupby('time.month').mean('time')
-    monthly_std = data[var_name].groupby('time.month').std('time')
+    month = data.time.dt.month
+    monthly_clim = data[var_name].groupby('time.month').mean('time', skipna=True)
+    monthly_std = data[var_name].groupby('time.month').std('time', skipna=True)
     
     # Compute anomalies: (value - mean) / std
-    anomalies = data[var_name].groupby('time.month') - monthly_clim
-    standardized_anomalies = anomalies.groupby('time.month') / monthly_std
+    anomaly = data[var_name] - monthly_clim.sel(month=month)
+    standardized_anomaly = anomaly / monthly_std.sel(month=month)
     
-    return standardized_anomalies
+    return standardized_anomaly
 
 
 # Marginal Distribution fitting
+
+# Function to compute ECDF using statsmodels
+def compute_ecdf_statsmodels(data, var_name):
+    # Stack and flatten the data, removing NaNs
+    flat_data = data[var_name].stack(all_points=['time', 'y', 'x']).dropna(dim='all_points').values
+    
+    # Compute ECDF
+    ecdf = ECDF(flat_data)
+    cdf_values = ecdf(flat_data)  # Evaluate ECDF at the data points
+    
+    # Reconstruct as DataArray
+    return xr.DataArray(
+        cdf_values,
+        coords={'all_points': data[var_name].stack(all_points=['time', 'y', 'x']).dropna(dim='all_points').coords['all_points']},
+        dims=['all_points']
+    ).unstack()
+
 
 # Function to compute ECDF with a common mask
 def compute_ecdf_statsmodels_consistent(ds):
