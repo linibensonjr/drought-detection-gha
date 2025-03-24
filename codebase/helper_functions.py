@@ -5,6 +5,11 @@ Fucntions to be applied for processing datasets for drought index development
 from statsmodels.distributions.empirical_distribution import ECDF
 from copulae import GaussianCopula, ClaytonCopula, FrankCopula, GumbelCopula, StudentCopula
 
+# Exponential Moving Aveage
+
+def apply_ema(da, span):
+    da.rolling_exp(time=span, window_type="span").mean()
+
 # Standardised Anomaly
 
 '''To remove climatology, calculate the monthly climatology (long-term mean and
@@ -160,3 +165,11 @@ def lookup_best_copula(subregion_id):
     print(f"BIC: {metrics[best_copula_name]['BIC']:.2f}")
     print(f"Parameters: {metrics[best_copula_name]['Parameters']}")
     return best_copula
+
+
+def select_month(month):
+    self.isel(time=month).plot()
+    return self
+
+def plot_ts(da, time):
+    da.isel(time=time).plot()
